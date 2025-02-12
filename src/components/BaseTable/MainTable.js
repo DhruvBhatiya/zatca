@@ -48,17 +48,6 @@ export default function MainTable() {
         fetchSingleRowData();
     }, [isRowId]);
 
-
-    // const fetchData = async () => {
-    //     try {
-    //         const response = await axios.get(API_URL2);
-    //         setTableData(response.data.items || []);
-    //     } catch (error) {
-    //         console.error("Error fetching data:", error);
-    //     }
-    // };
-
-
     const [loading, setLoading] = React.useState(false);
     const [isPending, startTransition] = React.useTransition();
 
@@ -297,7 +286,7 @@ export default function MainTable() {
                                 </TableHead>
                                 <TableBody>
                                     {tableData.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage).map((row, index) => (
-                                        <TableRow key={index} onClick={()=> setRowId(row.customer_trx_id)}>
+                                        <TableRow className='cursor-pointer hover:bg-slate-200' key={index} onClick={()=> setRowId(row.customer_trx_id)}>
                                             {Object.values(row).map((cell, cellIndex) => (
                                                 <TableCell className='!py-2--' key={cellIndex} >{cell}</TableCell>
                                             ))}
@@ -318,7 +307,7 @@ export default function MainTable() {
                     </Paper>
                 }
                 <Box className="mt-10">
-                    <DetailTable data={tableDataSingle} />
+                    <DetailTable data={tableDataSingle} loading={loading} />
                 </Box>
             </Box>
         </MyContainer>
