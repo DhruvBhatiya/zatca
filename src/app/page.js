@@ -13,7 +13,7 @@ export default function Home() {
     <>
       <Charts />
       <MainTable />
-      <BasicPie />
+      
     </>
   );
 }

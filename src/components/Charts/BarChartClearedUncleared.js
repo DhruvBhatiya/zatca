@@ -2,7 +2,7 @@ import * as React from 'react';
 import { BarChart } from '@mui/x-charts';
 
 export default function BarChartClearedUncleared({ db }) {
-    console.log("Raw Data:", db);
+    // console.log("Raw Data:", db);
 
     // Ensure db is an array to prevent errors
     const data = Array.isArray(db) ? db : [];

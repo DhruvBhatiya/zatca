@@ -2,7 +2,7 @@ import * as React from 'react';
 import { BarChart } from '@mui/x-charts';
 
 export default function BarChartCleared({ db }) {
-console.log("db",db)
+// console.log("db",db)
 
 const data = db ? db : []
   const chartData = {
