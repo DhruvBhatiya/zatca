@@ -13,7 +13,12 @@ import { Autocomplete } from '@mui/material';
 import DetailTable from './DetailTable';
 import MyContainer from '../MyContainer';
 
-const API_URL = "http://130.61.209.11:8080/ords/zatca/zatca_prod/InvoiceInformation?CUSTOMERNAME=undefined&ENDDATE=undefined&INVOICENO=undefined&STARTDATE=undefined&STATUS=ALL&SUPPLIERNAME=undefined";
+import Accordion from '@mui/material/Accordion';
+import AccordionSummary from '@mui/material/AccordionSummary';
+import AccordionDetails from '@mui/material/AccordionDetails';
+import Typography from '@mui/material/Typography';
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
+
 
 export default function MainTable() {
     const [order, setOrder] = React.useState('asc');
@@ -23,6 +28,10 @@ export default function MainTable() {
     const [tableData, setTableData] = React.useState([]);
     const [tableDataSingle, setTableDataSingle] = React.useState([]);
     const [isRowId, setRowId] = React.useState('');
+    const [isFromDate, setFromDate] = React.useState('undefined');
+    const [isToDate, setToDate] = React.useState('undefined');
+
+
 
     const [filters, setFilters] = React.useState({
         customer_name: '',
@@ -33,14 +42,25 @@ export default function MainTable() {
         clearance_status: ''
     });
 
-    // const API_URL2 = `http://130.61.209.11:8080/ords/zatca/zatca_prod/InvoiceInformation?CUSTOMERNAME=${filters.customer_name ? filters.customer_name : 'undefined'}&ENDDATE=${filters.toDate ? filters.toDate : 'undefined'}&INVOICENO=${filters.invoice_number ? filters.invoice_number : 'undefined'}&STARTDATE=${filters.fromDate ? filters.fromDate : 'undefined'}&STATUS=${filters.clearance_status ? filters.clearance_status : 'ALL'}&SUPPLIERNAME=${filters.supplier_name ? filters.supplier_name : 'undefined'}`;
 
-    const API_URL2 = `http://130.61.209.11:8080/ords/zatca/zatca_prod/InvoiceInformation?CUSTOMERNAME=${filters.customer_name || 'undefined'}&ENDDATE=${filters.toDate || 'undefined'}&INVOICENO=${filters.invoice_number || 'undefined'}&STARTDATE=${filters.fromDate || 'undefined'}&STATUS=${filters.clearance_status || 'ALL'}&SUPPLIERNAME=${filters.supplier_name || 'undefined'}&page=${page + 1}&size=${rowsPerPage}`;
+    React.useEffect(() => {
+        let fromDate1 = filters.fromDate != null ? new Date(filters.fromDate).toLocaleDateString("en-CA") : undefined;
+        let toDate1 = filters.toDate !=null ? new Date(filters.toDate).toLocaleDateString("en-CA") : undefined;
+
+        setFromDate(fromDate1)
+        setToDate(toDate1)
+
+        console.log("fromDate1", fromDate1 + '   ' + toDate1)
+    }, [filters.fromDate, filters.toDate])
+
+    const API_URL2 = `http://130.61.209.11:8080/ords/zatca/zatca_prod/InvoiceInformation?CUSTOMERNAME=${filters.customer_name || 'undefined'}&ENDDATE=${isToDate || 'undefined'}&INVOICENO=${filters.invoice_number || 'undefined'}&STARTDATE=${isFromDate || 'undefined'}&STATUS=${filters.clearance_status || 'ALL'}&SUPPLIERNAME=${filters.supplier_name || 'undefined'}&page=${page + 1}&size=${rowsPerPage}`;
 
     const getSingleRow = `http://130.61.209.11:8080/ords/zatca/zatca_prod/InvoiceClearanceErrors?customer_trx_id=${isRowId ? isRowId : 'undefined'}`
 
 
-    // console.log("filters", filters)
+    console.log("isToDate", filters.toDate + ' --- ' + filters.fromDate)
+    console.log("filters.fromDate", filters.fromDate)
+
     React.useEffect(() => {
         fetchData();
     }, []);
@@ -51,6 +71,7 @@ export default function MainTable() {
     const [loading, setLoading] = React.useState(false);
     const [isPending, startTransition] = React.useTransition();
 
+    // Main Table Data 
     const fetchData = async () => {
         setLoading(true);
         try {
@@ -69,6 +90,7 @@ export default function MainTable() {
     };
 
 
+    // SELECT ROW TO FETCH DATA
     const fetchSingleRowData = async () => {
         setLoading(true);
         try {
@@ -102,36 +124,37 @@ export default function MainTable() {
         setPage(0);
     };
 
+    // Filters onChange 
     const handleFilterChange = (name, value) => {
         setFilters({ ...filters, [name]: value });
-        // setFilters({ ...filters, [name]: value ? moment(value).format('DD/MM/YYYY') : null });
-
     };
 
+    // SEARCH 
     const handleSearch = () => {
         console.log('Search filters:', filters);
         fetchData();
     };
-
+    // RESET 
     const handleReset = () => {
         setFilters({ customer_name: '', invoice_number: '', supplier_name: '', fromDate: null, toDate: null, clearance_status: '' });
     };
 
+    // Export CSV 
     const exportToCSV = () => {
         if (tableData.length === 0) {
             alert("No data to export");
             return;
         }
-    
+
         const headers = Object.keys(tableData[0]).join(",") + "\n";
         const rows = tableData
             .map(row => Object.values(row).map(value => `"${value}"`).join(","))
             .join("\n");
-    
+
         const csvContent = headers + rows;
         const blob = new Blob([csvContent], { type: "text/csv" });
         const url = URL.createObjectURL(blob);
-    
+
         const link = document.createElement("a");
         link.href = url;
         link.setAttribute("download", "InvoiceInformation.csv");
@@ -140,22 +163,22 @@ export default function MainTable() {
         document.body.removeChild(link);
     };
 
-
+    // Export PDF 
     const exportToPDF = () => {
         if (tableData.length === 0) {
             alert("No data to export");
             return;
         }
-    
+
         const doc = new jsPDF();
         doc.text("Invoice Data", 14, 15);
-    
+
         // Extract table headers
         const headers = [Object.keys(tableData[0])];
-    
+
         // Extract table rows
         const rows = tableData.map(row => Object.values(row));
-    
+
         // Add table to PDF
         doc.autoTable({
             head: headers,
@@ -163,14 +186,10 @@ export default function MainTable() {
             startY: 20,
             theme: "grid",
         });
-    
+
         doc.save("InvoiceInformation.pdf");
     };
-    
-    
 
-    console.log("tableDataSingle", tableDataSingle)
-    console.log("tableDataSingle isRowId",isRowId)
 
     return (
         <MyContainer className={'bg-[#000]'}>
@@ -228,14 +247,14 @@ export default function MainTable() {
                             <LocalizationProvider dateAdapter={AdapterDateFns}>
                                 <DatePicker
                                     label="To Issue Date"
-                                    
+
                                     value={filters.toDate}
                                     onChange={(newValue) => handleFilterChange('toDate', newValue)}
                                     renderInput={(params) => <TextField {...params} fullWidth />}
                                 />
                             </LocalizationProvider>
                         </Grid>
-                    
+
 
                         {/* Status */}
                         <Grid item xs={2}>
@@ -286,7 +305,7 @@ export default function MainTable() {
                                 </TableHead>
                                 <TableBody>
                                     {tableData.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage).map((row, index) => (
-                                        <TableRow className='cursor-pointer hover:bg-slate-200' key={index} onClick={()=> setRowId(row.customer_trx_id)}>
+                                        <TableRow className='cursor-pointer hover:bg-slate-200' key={index} onClick={() => setRowId(row.customer_trx_id)}>
                                             {Object.values(row).map((cell, cellIndex) => (
                                                 <TableCell className='!py-2--' key={cellIndex} >{cell}</TableCell>
                                             ))}
@@ -306,8 +325,26 @@ export default function MainTable() {
                         />
                     </Paper>
                 }
+
+
                 <Box className="mt-10">
-                    <DetailTable data={tableDataSingle} loading={loading} />
+
+                    <Accordion defaultExpanded >
+                        <AccordionSummary
+                            className='!bg-slate-200 '
+                            expandIcon={<ExpandMoreIcon />}
+                            aria-controls="panel1-content"
+                            id="panel1-header"
+                        >
+                            <Typography className=' !font-medium !capitalize' component="span">Detailed Error Messages</Typography>
+                        </AccordionSummary>
+                        <AccordionDetails>
+                            <Typography>
+                                <DetailTable data={tableDataSingle} loading={loading} />
+                            </Typography>
+                        </AccordionDetails>
+                    </Accordion>
+
                 </Box>
             </Box>
         </MyContainer>

@@ -62,7 +62,7 @@ export default function Charts() {
       <div className="grid grid-cols-3 gap-4">
         <div><CardTitle content={<BarChartCleared db={isMonthClearedInvoices} />} title={'Month-wise Cleared Invoices Value'} /></div>
         <div><CardTitle content={<BarChartClearedUncleared db={isMonthClearedUnclearedInvoices} />} title={'Month-wise Total, Cleared & UnCleared Invoices'} /></div>
-        <div><CardTitle content={<BasicPie db={top5Customer} />} title={'Top 5 customers'} /></div>
+        <div><CardTitle content={<BasicPie data={top5Customer} />} title={'Top 5 customers'} /></div>
       </div>
     </MyContainer>
   );
