@@ -23,8 +23,10 @@ export default function DetailTable({ data, loading }) {
                         columns={columns}
                         sx={{
                             border: '1px solid #ddd',
+                            height: 'auto',
                             '& .MuiDataGrid-cell': {
                                 borderRight: '1px solid #ddd',
+                                // padding: '8px'
                             },
                             '& .MuiDataGrid-row': {
                                 borderBottom: '1px solid #ddd',

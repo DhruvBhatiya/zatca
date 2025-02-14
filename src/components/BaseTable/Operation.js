@@ -49,3 +49,28 @@ export const exportToPDF = () => {
 
     doc.save("Invoice_Information.pdf");
 };
+
+
+ // Export CSV 
+ export const exportToCSV = () => {
+    if (tableData.length === 0) {
+        alert("No data to export");
+        return;
+    }
+
+    const headers = Object.keys(tableData[0]).join(",") + "\n";
+    const rows = tableData
+        .map(row => Object.values(row).map(value => `"${value}"`).join(","))
+        .join("\n");
+
+    const csvContent = headers + rows;
+    const blob = new Blob([csvContent], { type: "text/csv" });
+    const url = URL.createObjectURL(blob);
+
+    const link = document.createElement("a");
+    link.href = url;
+    link.setAttribute("download", "InvoiceInformation.csv");
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+};

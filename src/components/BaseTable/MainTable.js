@@ -18,7 +18,7 @@ import AccordionSummary from '@mui/material/AccordionSummary';
 import AccordionDetails from '@mui/material/AccordionDetails';
 import Typography from '@mui/material/Typography';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
-import { exportToPDF } from './Operation';
+import { exportToCSV, exportToPDF } from './Operation';
 
 
 export default function MainTable() {
@@ -51,7 +51,7 @@ export default function MainTable() {
         setFromDate(fromDate1)
         setToDate(toDate1)
 
-        console.log("fromDate1", fromDate1 + '   ' + toDate1)
+        // console.log("fromDate1", fromDate1 + '   ' + toDate1)
     }, [filters.fromDate, filters.toDate])
 
     const API_URL2 = `http://130.61.209.11:8080/ords/zatca/zatca_prod/InvoiceInformation?CUSTOMERNAME=${filters.customer_name || 'undefined'}&ENDDATE=${isToDate || 'undefined'}&INVOICENO=${filters.invoice_number || 'undefined'}&STARTDATE=${isFromDate || 'undefined'}&STATUS=${filters.clearance_status || 'ALL'}&SUPPLIERNAME=${filters.supplier_name || 'undefined'}&page=${page + 1}&size=${rowsPerPage}`;
@@ -142,31 +142,6 @@ export default function MainTable() {
     const handleReset = () => {
         setFilters({ customer_name: '', invoice_number: '', supplier_name: '', fromDate: null, toDate: null, clearance_status: '' });
     };
-
-    // Export CSV 
-    const exportToCSV = () => {
-        if (tableData.length === 0) {
-            alert("No data to export");
-            return;
-        }
-
-        const headers = Object.keys(tableData[0]).join(",") + "\n";
-        const rows = tableData
-            .map(row => Object.values(row).map(value => `"${value}"`).join(","))
-            .join("\n");
-
-        const csvContent = headers + rows;
-        const blob = new Blob([csvContent], { type: "text/csv" });
-        const url = URL.createObjectURL(blob);
-
-        const link = document.createElement("a");
-        link.href = url;
-        link.setAttribute("download", "InvoiceInformation.csv");
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-    };
-
 
     const handleRequestSort = (event, property) => {
         const isAsc = orderBy === property && order === 'asc';
