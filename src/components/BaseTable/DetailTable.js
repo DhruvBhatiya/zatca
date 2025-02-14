@@ -14,26 +14,26 @@ const columns = [
 const paginationModel = { page: 0, pageSize: 5 };
 
 export default function DetailTable({ data, loading }) {
-
-
-    console.log("data", data)
     return (<>
-
         {loading ? <Paper sx={{ width: '100%', p: 2, textAlign: 'center' }}>Loading...</Paper> :
-            <Paper sx={{ width: "100%" }}>
+            <Paper sx={{ width: "100%", border: '1px solid #ddd', borderRadius: '4px', overflow: 'hidden' }}>
                 {data.length > 0 ?
                     <DataGrid
                         rows={data.map((item, index) => ({ id: index + 1, ...item }))}
                         columns={columns}
-                        // initialState={{ pagination: { paginationModel } }}
-                        // pageSizeOptions={[5, 10]}
-                        // checkboxSelection
-                        sx={{ border: 0 }}
+                        sx={{
+                            border: '1px solid #ddd',
+                            '& .MuiDataGrid-cell': {
+                                borderRight: '1px solid #ddd',
+                            },
+                            '& .MuiDataGrid-row': {
+                                borderBottom: '1px solid #ddd',
+                            }
+                        }}
                     />
                     : <p className="p-3">No data to display.</p>
                 }
             </Paper>
         }
-    </>
-    );
+    </>);
 }

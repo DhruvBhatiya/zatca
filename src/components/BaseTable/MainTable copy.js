@@ -1,5 +1,7 @@
 import * as React from 'react';
 import axios from 'axios';
+import jsPDF from 'jspdf';
+import 'jspdf-autotable';
 import {
     Box, Paper, Table, TableBody, TableCell, TableContainer, TableHead, TablePagination,
     TableRow, TableSortLabel, Button, Grid, TextField
@@ -11,7 +13,13 @@ import { Autocomplete } from '@mui/material';
 import DetailTable from './DetailTable';
 import MyContainer from '../MyContainer';
 
-const API_URL = "http://130.61.209.11:8080/ords/zatca/zatca_prod/InvoiceInformation?CUSTOMERNAME=undefined&ENDDATE=undefined&INVOICENO=undefined&STARTDATE=undefined&STATUS=ALL&SUPPLIERNAME=undefined";
+import Accordion from '@mui/material/Accordion';
+import AccordionSummary from '@mui/material/AccordionSummary';
+import AccordionDetails from '@mui/material/AccordionDetails';
+import Typography from '@mui/material/Typography';
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
+import { exportToPDF } from './Operation';
+
 
 export default function MainTable() {
     const [order, setOrder] = React.useState('asc');
@@ -19,6 +27,12 @@ export default function MainTable() {
     const [page, setPage] = React.useState(0);
     const [rowsPerPage, setRowsPerPage] = React.useState(5);
     const [tableData, setTableData] = React.useState([]);
+    const [tableDataSingle, setTableDataSingle] = React.useState([]);
+    const [isRowId, setRowId] = React.useState('');
+    const [isFromDate, setFromDate] = React.useState('undefined');
+    const [isToDate, setToDate] = React.useState('undefined');
+
+
 
     const [filters, setFilters] = React.useState({
         customer_name: '',
@@ -29,27 +43,37 @@ export default function MainTable() {
         clearance_status: ''
     });
 
-    const API_URL2 = `http://130.61.209.11:8080/ords/zatca/zatca_prod/InvoiceInformation?CUSTOMERNAME=${filters.customer_name ? filters.customer_name : 'undefined'}&ENDDATE=undefined&INVOICENO=${filters.invoice_number ? filters.invoice_number : 'undefined'}&STARTDATE=undefined&STATUS=${filters.clearance_status ? filters.clearance_status : 'ALL'}&SUPPLIERNAME=${filters.supplier_name ? filters.supplier_name : 'undefined'}`;
 
-    console.log("filters", filters)
+    React.useEffect(() => {
+        let fromDate1 = filters.fromDate != null ? new Date(filters.fromDate).toLocaleDateString("en-CA") : undefined;
+        let toDate1 = filters.toDate != null ? new Date(filters.toDate).toLocaleDateString("en-CA") : undefined;
+
+        setFromDate(fromDate1)
+        setToDate(toDate1)
+
+        console.log("fromDate1", fromDate1 + '   ' + toDate1)
+    }, [filters.fromDate, filters.toDate])
+
+    const API_URL2 = `http://130.61.209.11:8080/ords/zatca/zatca_prod/InvoiceInformation?CUSTOMERNAME=${filters.customer_name || 'undefined'}&ENDDATE=${isToDate || 'undefined'}&INVOICENO=${filters.invoice_number || 'undefined'}&STARTDATE=${isFromDate || 'undefined'}&STATUS=${filters.clearance_status || 'ALL'}&SUPPLIERNAME=${filters.supplier_name || 'undefined'}&page=${page + 1}&size=${rowsPerPage}`;
+
+    const getSingleRow = `http://130.61.209.11:8080/ords/zatca/zatca_prod/InvoiceClearanceErrors?customer_trx_id=${isRowId ? isRowId : 'undefined'}`
+
+
+    console.log("isToDate", filters.toDate + ' --- ' + filters.fromDate)
+    console.log("filters.fromDate", filters.fromDate)
+
     React.useEffect(() => {
         fetchData();
     }, []);
-
-
-    // const fetchData = async () => {
-    //     try {
-    //         const response = await axios.get(API_URL2);
-    //         setTableData(response.data.items || []);
-    //     } catch (error) {
-    //         console.error("Error fetching data:", error);
-    //     }
-    // };
-
+    React.useEffect(() => {
+        fetchSingleRowData();
+    }, [isRowId]);
 
     const [loading, setLoading] = React.useState(false);
+    const [loadingDT, setLoadingDT] = React.useState(false);
     const [isPending, startTransition] = React.useTransition();
 
+    // Main Table Data 
     const fetchData = async () => {
         setLoading(true);
         try {
@@ -68,11 +92,26 @@ export default function MainTable() {
     };
 
 
-    const handleRequestSort = (event, property) => {
-        const isAsc = orderBy === property && order === 'asc';
-        setOrder(isAsc ? 'desc' : 'asc');
-        setOrderBy(property);
+    // SELECT ROW TO FETCH DATA
+    const fetchSingleRowData = async () => {
+        setLoadingDT(true);
+        try {
+            const response = await axios.get(getSingleRow);
+
+            // Defer updating state to avoid UI freeze
+            startTransition(() => {
+                setTableDataSingle(response.data.items || []);
+            });
+
+        } catch (error) {
+            console.error("Error fetching data:", error);
+        } finally {
+            setLoadingDT(false);
+        }
     };
+
+
+  
 
     const handleChangePage = (event, newPage) => {
         setPage(newPage);
@@ -83,20 +122,57 @@ export default function MainTable() {
         setPage(0);
     };
 
+    // Filters onChange 
     const handleFilterChange = (name, value) => {
         setFilters({ ...filters, [name]: value });
     };
 
+    // SEARCH 
     const handleSearch = () => {
         console.log('Search filters:', filters);
         fetchData();
     };
-
+    // RESET 
     const handleReset = () => {
         setFilters({ customer_name: '', invoice_number: '', supplier_name: '', fromDate: null, toDate: null, clearance_status: '' });
     };
 
-    console.log("tableData", tableData)
+    // Export CSV 
+    const exportToCSV = () => {
+        if (tableData.length === 0) {
+            alert("No data to export");
+            return;
+        }
+
+        const headers = Object.keys(tableData[0]).join(",") + "\n";
+        const rows = tableData
+            .map(row => Object.values(row).map(value => `"${value}"`).join(","))
+            .join("\n");
+
+        const csvContent = headers + rows;
+        const blob = new Blob([csvContent], { type: "text/csv" });
+        const url = URL.createObjectURL(blob);
+
+        const link = document.createElement("a");
+        link.href = url;
+        link.setAttribute("download", "InvoiceInformation.csv");
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    };
+
+
+    const handleRequestSort = (event, property) => {
+        const isAsc = orderBy === property && order === 'asc';
+        setOrder(isAsc ? 'desc' : 'asc');
+        setOrderBy(property);
+        const sortedData = [...tableData].sort((a, b) => {
+            return (isAsc ? a[property] > b[property] : a[property] < b[property]) ? 1 : -1;
+        });
+        setTableData(sortedData);
+    };
+
+
     return (
         <MyContainer className={'bg-[#000]'}>
             <Box sx={{ width: '100%' }}>
@@ -140,6 +216,7 @@ export default function MainTable() {
                             <LocalizationProvider dateAdapter={AdapterDateFns}>
                                 <DatePicker
                                     label="From Issue Date"
+                                    // format="dd/MM/YYYY"
                                     value={filters.fromDate}
                                     onChange={(newValue) => handleFilterChange('fromDate', newValue)}
                                     renderInput={(params) => <TextField {...params} fullWidth />}
@@ -152,12 +229,14 @@ export default function MainTable() {
                             <LocalizationProvider dateAdapter={AdapterDateFns}>
                                 <DatePicker
                                     label="To Issue Date"
+
                                     value={filters.toDate}
                                     onChange={(newValue) => handleFilterChange('toDate', newValue)}
                                     renderInput={(params) => <TextField {...params} fullWidth />}
                                 />
                             </LocalizationProvider>
                         </Grid>
+
 
                         {/* Status */}
                         <Grid item xs={2}>
@@ -177,10 +256,10 @@ export default function MainTable() {
                             <Button variant="outlined" color="secondary" onClick={handleReset} sx={{ mx: 1 }}>
                                 Reset
                             </Button>
-                            <Button variant="contained" color="success" sx={{ mx: 1 }}>
+                            <Button variant="contained" color="success" sx={{ mx: 1 }} onClick={exportToCSV}>
                                 Export
                             </Button>
-                            <Button variant="contained" color="error" sx={{ mx: 1 }}>
+                            <Button variant="contained" color="error" sx={{ mx: 1 }} onClick={exportToPDF}>
                                 Download PDF
                             </Button>
                         </Grid>
@@ -191,16 +270,16 @@ export default function MainTable() {
                         <TableContainer>
                             <Table>
                                 <TableHead>
-                                    <TableRow>
+                                    <TableRow >
                                         {tableData.length > 0 &&
                                             Object.keys(tableData[0]).map((key) => (
-                                                <TableCell key={key}>
+                                                <TableCell key={key} sx={{ fontWeight: 'bold', textTransform: 'capitalize', minWidth: 120, borderRight: '1px solid #ddd', padding: '8px' }}>
                                                     <TableSortLabel
                                                         active={orderBy === key}
                                                         direction={orderBy === key ? order : 'asc'}
                                                         onClick={() => handleRequestSort(null, key)}
                                                     >
-                                                        {key}
+                                                        {key.replace(/_/g, ' ')}
                                                     </TableSortLabel>
                                                 </TableCell>
                                             ))}
@@ -208,9 +287,12 @@ export default function MainTable() {
                                 </TableHead>
                                 <TableBody>
                                     {tableData.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage).map((row, index) => (
-                                        <TableRow key={index}>
+                                        <TableRow className='hover:bg-slate-200' key={index} onClick={() => setRowId(row.customer_trx_id)}
+                                        sx={{cursor: 'pointer'}}>
                                             {Object.values(row).map((cell, cellIndex) => (
-                                                <TableCell className='!py-2--' key={cellIndex}>{cell}</TableCell>
+                                                <TableCell key={cellIndex}
+                                                    sx={{ whiteSpace: 'nowrap', padding: '8px', fontWeight: 'bold', textTransform: 'uppercase', minWidth: 120, borderRight: '1px solid #ddd' }}
+                                                >{cell}</TableCell>
                                             ))}
                                         </TableRow>
                                     ))}
@@ -223,13 +305,30 @@ export default function MainTable() {
                             count={tableData.length}
                             rowsPerPage={rowsPerPage}
                             page={page}
-                            onPageChange={handleChangePage}
-                            onRowsPerPageChange={handleChangeRowsPerPage}
+                            onPageChange={(event, newPage) => setPage(newPage)}
+                            onRowsPerPageChange={(event) => setRowsPerPage(parseInt(event.target.value, 10))}
                         />
                     </Paper>
+
                 }
+
+
                 <Box className="mt-10">
-                    <DetailTable />
+
+                    <Accordion defaultExpanded >
+                        <AccordionSummary
+                            className='!bg-slate-200 '
+                            expandIcon={<ExpandMoreIcon />}
+                            aria-controls="panel1-content"
+                            id="panel1-header"
+                        >
+                            <Typography className=' !font-medium !capitalize' component="span">Detailed Error Messages</Typography>
+                        </AccordionSummary>
+                        <AccordionDetails>
+                            <DetailTable data={tableDataSingle} loading={loadingDT} />
+                        </AccordionDetails>
+                    </Accordion>
+
                 </Box>
             </Box>
         </MyContainer>

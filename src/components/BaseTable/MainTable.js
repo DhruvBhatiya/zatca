@@ -18,6 +18,7 @@ import AccordionSummary from '@mui/material/AccordionSummary';
 import AccordionDetails from '@mui/material/AccordionDetails';
 import Typography from '@mui/material/Typography';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
+import { exportToPDF } from './Operation';
 
 
 export default function MainTable() {
@@ -45,7 +46,7 @@ export default function MainTable() {
 
     React.useEffect(() => {
         let fromDate1 = filters.fromDate != null ? new Date(filters.fromDate).toLocaleDateString("en-CA") : undefined;
-        let toDate1 = filters.toDate !=null ? new Date(filters.toDate).toLocaleDateString("en-CA") : undefined;
+        let toDate1 = filters.toDate != null ? new Date(filters.toDate).toLocaleDateString("en-CA") : undefined;
 
         setFromDate(fromDate1)
         setToDate(toDate1)
@@ -69,7 +70,14 @@ export default function MainTable() {
     }, [isRowId]);
 
     const [loading, setLoading] = React.useState(false);
+    const [loadingDT, setLoadingDT] = React.useState(false);
     const [isPending, startTransition] = React.useTransition();
+    const [selectedRow, setSelectedRow] = React.useState(null);
+
+    const handleRowClick = (rowId) => {
+        setRowId(rowId);
+        setSelectedRow(rowId);
+    };
 
     // Main Table Data 
     const fetchData = async () => {
@@ -92,7 +100,7 @@ export default function MainTable() {
 
     // SELECT ROW TO FETCH DATA
     const fetchSingleRowData = async () => {
-        setLoading(true);
+        setLoadingDT(true);
         try {
             const response = await axios.get(getSingleRow);
 
@@ -104,16 +112,12 @@ export default function MainTable() {
         } catch (error) {
             console.error("Error fetching data:", error);
         } finally {
-            setLoading(false);
+            setLoadingDT(false);
         }
     };
 
 
-    const handleRequestSort = (event, property) => {
-        const isAsc = orderBy === property && order === 'asc';
-        setOrder(isAsc ? 'desc' : 'asc');
-        setOrderBy(property);
-    };
+
 
     const handleChangePage = (event, newPage) => {
         setPage(newPage);
@@ -163,31 +167,15 @@ export default function MainTable() {
         document.body.removeChild(link);
     };
 
-    // Export PDF 
-    const exportToPDF = () => {
-        if (tableData.length === 0) {
-            alert("No data to export");
-            return;
-        }
 
-        const doc = new jsPDF();
-        doc.text("Invoice Data", 14, 15);
-
-        // Extract table headers
-        const headers = [Object.keys(tableData[0])];
-
-        // Extract table rows
-        const rows = tableData.map(row => Object.values(row));
-
-        // Add table to PDF
-        doc.autoTable({
-            head: headers,
-            body: rows,
-            startY: 20,
-            theme: "grid",
+    const handleRequestSort = (event, property) => {
+        const isAsc = orderBy === property && order === 'asc';
+        setOrder(isAsc ? 'desc' : 'asc');
+        setOrderBy(property);
+        const sortedData = [...tableData].sort((a, b) => {
+            return (isAsc ? a[property] > b[property] : a[property] < b[property]) ? 1 : -1;
         });
-
-        doc.save("InvoiceInformation.pdf");
+        setTableData(sortedData);
     };
 
 
@@ -291,13 +279,13 @@ export default function MainTable() {
                                     <TableRow>
                                         {tableData.length > 0 &&
                                             Object.keys(tableData[0]).map((key) => (
-                                                <TableCell key={key}>
+                                                <TableCell key={key} sx={{ fontWeight: 'bold', textTransform: 'capitalize', minWidth: 120, borderRight: '1px solid #ddd', padding: '8px' }}>
                                                     <TableSortLabel
                                                         active={orderBy === key}
                                                         direction={orderBy === key ? order : 'asc'}
                                                         onClick={() => handleRequestSort(null, key)}
                                                     >
-                                                        {key}
+                                                        {key.replace(/_/g, ' ')}
                                                     </TableSortLabel>
                                                 </TableCell>
                                             ))}
@@ -305,25 +293,37 @@ export default function MainTable() {
                                 </TableHead>
                                 <TableBody>
                                     {tableData.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage).map((row, index) => (
-                                        <TableRow className='cursor-pointer hover:bg-slate-200' key={index} onClick={() => setRowId(row.customer_trx_id)}>
+                                        <TableRow
+                                            className='hover:bg-slate-200'
+                                            key={index}
+                                            onClick={() => handleRowClick(row.customer_trx_id)}
+                                            sx={{
+                                                cursor: 'pointer',
+                                                backgroundColor: selectedRow === row.customer_trx_id ? '#d3d3d3' : 'transparent'
+                                            }}
+                                        >
                                             {Object.values(row).map((cell, cellIndex) => (
-                                                <TableCell className='!py-2--' key={cellIndex} >{cell}</TableCell>
+                                                <TableCell key={cellIndex}
+                                                    sx={{ whiteSpace: 'nowrap', padding: '8px', fontWeight: 'bold', textTransform: 'uppercase', minWidth: 120, borderRight: '1px solid #ddd' }}
+                                                >{cell}</TableCell>
                                             ))}
                                         </TableRow>
                                     ))}
                                 </TableBody>
                             </Table>
                         </TableContainer>
+
                         <TablePagination
                             rowsPerPageOptions={[5, 10, 25]}
                             component="div"
                             count={tableData.length}
                             rowsPerPage={rowsPerPage}
                             page={page}
-                            onPageChange={handleChangePage}
-                            onRowsPerPageChange={handleChangeRowsPerPage}
+                            onPageChange={(event, newPage) => setPage(newPage)}
+                            onRowsPerPageChange={(event) => setRowsPerPage(parseInt(event.target.value, 10))}
                         />
                     </Paper>
+
                 }
 
 
@@ -339,9 +339,7 @@ export default function MainTable() {
                             <Typography className=' !font-medium !capitalize' component="span">Detailed Error Messages</Typography>
                         </AccordionSummary>
                         <AccordionDetails>
-                            <Typography>
-                                <DetailTable data={tableDataSingle} loading={loading} />
-                            </Typography>
+                            <DetailTable data={tableDataSingle} loading={loadingDT} />
                         </AccordionDetails>
                     </Accordion>
 
